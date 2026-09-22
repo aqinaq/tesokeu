@@ -24,3 +24,7 @@ Then open [http://localhost:4173](http://localhost:4173). The import features re
 Keyboard shortcuts in the reader: Space to play or pause, Left and Right to skip 10 words, Up and Down to change speed.
 
 Run parser tests with `.venv/bin/python -m unittest discover -s tests -v`.
+
+## Deploy
+
+The included `render.yaml` configures a free Python web service on Render. Connect this repository through Render's Blueprint flow. The service installs `requirements.txt`, runs `python server.py`, and listens on Render's `PORT`. The same server provides the pages and the PDF, EPUB, and article import endpoints. Reading data remains in each visitor's browser and does not sync between devices.

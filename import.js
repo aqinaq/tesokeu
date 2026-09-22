@@ -4,7 +4,7 @@ const TesokeuImport = (() => {
 
   async function result(response) {
     const type = response.headers.get('content-type') || '';
-    if (!type.includes('application/json')) throw new Error('Start Tesokeu with the local server to import PDFs, EPUBs, and article links.');
+    if (!type.includes('application/json')) throw new Error('The import service is unavailable. Try again in a moment.');
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'This import could not be completed.');
     return data;
@@ -30,7 +30,7 @@ const TesokeuImport = (() => {
         body: file
       });
     } catch {
-      throw new Error('The local import server could not be reached. Run python server.py and try again.');
+      throw new Error('The import service could not be reached. Try again in a moment.');
     }
     return result(response);
   }
@@ -45,7 +45,7 @@ const TesokeuImport = (() => {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: parsed.href })
       });
     } catch {
-      throw new Error('The local article server could not be reached. Run python server.py and try again.');
+      throw new Error('The article service could not be reached. Try again in a moment.');
     }
     return result(response);
   }

@@ -2,18 +2,19 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import html
 from html.parser import HTMLParser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 import ipaddress
 import json
+import os
 import posixpath
 import re
 import socket
 import ssl
-from urllib.parse import unquote, urlparse
-from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+from urllib.parse import unquote, urljoin, urlparse
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -213,25 +214,45 @@ def public_url(value: str) -> str:
     return value
 
 
-class SafeRedirects(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        public_url(newurl)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
-
-
 def extract_article(url: str) -> dict:
-    public_url(url)
-    opener = build_opener(SafeRedirects(), HTTPSHandler(context=ssl.create_default_context(cafile=certifi.where())))
-    request = Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; TesokeuReader/1.0)', 'Accept': 'text/html,application/xhtml+xml'})
     try:
-        with opener.open(request, timeout=12) as response:
-            if response.headers.get_content_type() not in ('text/html', 'application/xhtml+xml'):
-                raise ImportErrorMessage('This link is not an HTML article.')
-            raw = response.read(MAX_HTML_BYTES + 1)
-            if len(raw) > MAX_HTML_BYTES:
-                raise ImportErrorMessage('This article page is too large to import.')
-            charset = response.headers.get_content_charset() or 'utf-8'
-            source_url = response.url
+        for _ in range(6):
+            public_url(url)
+            parsed = urlparse(url)
+            port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+            addresses = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
+            if not addresses or any(not ipaddress.ip_address(item[4][0]).is_global for item in addresses):
+                raise ImportErrorMessage('Only public article URLs can be imported.')
+            pinned_ip = addresses[0][4][0]
+            connection = (http.client.HTTPSConnection(parsed.hostname, port, timeout=12, context=ssl.create_default_context(cafile=certifi.where()))
+                          if parsed.scheme == 'https' else http.client.HTTPConnection(parsed.hostname, port, timeout=12))
+            connection._create_connection = lambda address, timeout, source_address=None: socket.create_connection((pinned_ip, port), timeout, source_address)
+            try:
+                path = parsed.path or '/'
+                if parsed.query:
+                    path += '?' + parsed.query
+                connection.request('GET', path, headers={'Host': parsed.netloc, 'User-Agent': 'Mozilla/5.0 (compatible; TesokeuReader/1.0)', 'Accept': 'text/html,application/xhtml+xml', 'Accept-Encoding': 'identity'})
+                response = connection.getresponse()
+                if response.status in (301, 302, 303, 307, 308):
+                    location = response.getheader('Location')
+                    if not location:
+                        raise ImportErrorMessage('The article redirected without a destination.')
+                    url = urljoin(url, location)
+                    continue
+                if response.status >= 400:
+                    raise ImportErrorMessage('The article could not be loaded. Try another link or paste the text.')
+                if response.headers.get_content_type() not in ('text/html', 'application/xhtml+xml'):
+                    raise ImportErrorMessage('This link is not an HTML article.')
+                raw = response.read(MAX_HTML_BYTES + 1)
+                if len(raw) > MAX_HTML_BYTES:
+                    raise ImportErrorMessage('This article page is too large to import.')
+                charset = response.headers.get_content_charset() or 'utf-8'
+                source_url = url
+                break
+            finally:
+                connection.close()
+        else:
+            raise ImportErrorMessage('This article redirected too many times.')
     except ImportErrorMessage:
         raise
     except Exception as exc:
@@ -279,8 +300,10 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path not in ('/api/import-file', '/api/import-url'):
             return self.send_json(404, {'error': 'Unknown endpoint.'})
         origin = self.headers.get('Origin')
-        if origin and origin not in ('http://127.0.0.1:4173', 'http://localhost:4173'):
-            return self.send_json(403, {'error': 'This request must come from Tesokeu on localhost.'})
+        if origin:
+            parsed_origin = urlparse(origin)
+            if parsed_origin.scheme not in ('http', 'https') or parsed_origin.netloc != self.headers.get('Host') or parsed_origin.path not in ('', '/'):
+                return self.send_json(403, {'error': 'This request must come from Tesokeu.'})
         try:
             length = int(self.headers.get('Content-Length', '0'))
             limit = MAX_FILE_BYTES if self.path == '/api/import-file' else 4096
@@ -309,10 +332,11 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description='Run the Tesokeu local reader server')
-    parser.add_argument('--port', type=int, default=4173)
+    parser.add_argument('--port', type=int, default=int(os.environ.get('PORT', '4173')))
+    parser.add_argument('--host', default='0.0.0.0' if os.environ.get('PORT') else '127.0.0.1')
     args = parser.parse_args()
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
-    print(f'Tesokeu is running at http://127.0.0.1:{args.port}', flush=True)
+    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    print(f'Tesokeu is running at http://{args.host}:{args.port}', flush=True)
     server.serve_forever()
 
 
