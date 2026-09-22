@@ -20,6 +20,7 @@ import zipfile
 
 import certifi
 from pypdf import PdfReader
+from sync_store import SyncError, create_room, delete_room, get_room, join_room, new_code, update_room
 
 MAX_FILE_BYTES = 12 * 1024 * 1024
 MAX_HTML_BYTES = 5 * 1024 * 1024
@@ -270,7 +271,7 @@ def extract_article(url: str) -> dict:
 class Handler(SimpleHTTPRequestHandler):
     ALLOWED_FILES = {
         'index.html', 'library.html', 'insights.html', 'guide.html',
-        'styles.css', 'pages.css', 'data.js', 'app.js', 'pages.js', 'import.js',
+        'styles.css', 'pages.css', 'data.js', 'app.js', 'pages.js', 'import.js', 'sync.js',
     }
 
     def allowed_static(self):
@@ -278,6 +279,12 @@ class Handler(SimpleHTTPRequestHandler):
         return path in self.ALLOWED_FILES
 
     def do_GET(self):
+        if self.path == '/api/sync/state':
+            try:
+                self.send_json(200, get_room(self.bearer_token()))
+            except SyncError as exc:
+                self.send_json(exc.status, {'error': str(exc)})
+            return
         if not self.allowed_static():
             return self.send_error(404)
         return super().do_GET()
@@ -293,18 +300,61 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(payload)))
         self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         self.wfile.write(payload)
 
-    def do_POST(self):
-        if self.path not in ('/api/import-file', '/api/import-url'):
-            return self.send_json(404, {'error': 'Unknown endpoint.'})
+    def same_origin(self):
         origin = self.headers.get('Origin')
         if origin:
             parsed_origin = urlparse(origin)
             if parsed_origin.scheme not in ('http', 'https') or parsed_origin.netloc != self.headers.get('Host') or parsed_origin.path not in ('', '/'):
-                return self.send_json(403, {'error': 'This request must come from Tesokeu.'})
+                raise SyncError('This request must come from Tesokeu.', 403)
+
+    def bearer_token(self):
+        authorization = self.headers.get('Authorization', '')
+        if not authorization.startswith('Bearer '):
+            raise SyncError('This device is not connected to a sync space.', 401)
+        return authorization[7:]
+
+    def read_json(self, limit):
         try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if length <= 0 or length > limit:
+                raise SyncError('This request is empty or too large.')
+            payload = json.loads(self.rfile.read(length).decode('utf-8'))
+            if not isinstance(payload, dict):
+                raise SyncError('The request is not a JSON object.')
+            return payload
+        except (ValueError, UnicodeError, json.JSONDecodeError) as exc:
+            raise SyncError('The request is not valid JSON.') from exc
+
+    def sync_request(self):
+        self.same_origin()
+        if self.path == '/api/sync/create' and self.command == 'POST':
+            return create_room(self.read_json(2 * 1024 * 1024 + 4096).get('snapshot'))
+        if self.path == '/api/sync/code' and self.command == 'POST':
+            return new_code(self.bearer_token())
+        if self.path == '/api/sync/join' and self.command == 'POST':
+            return join_room(self.read_json(4096).get('code'))
+        if self.path == '/api/sync/state' and self.command == 'PUT':
+            payload = self.read_json(2 * 1024 * 1024 + 4096)
+            return update_room(self.bearer_token(), payload.get('revision'), payload.get('snapshot'))
+        if self.path == '/api/sync/state' and self.command == 'DELETE':
+            return delete_room(self.bearer_token())
+        raise SyncError('Unknown endpoint.', 404)
+
+    def do_POST(self):
+        if self.path.startswith('/api/sync/'):
+            try:
+                self.send_json(200, self.sync_request())
+            except SyncError as exc:
+                self.send_json(exc.status, {'error': str(exc)})
+            return
+        if self.path not in ('/api/import-file', '/api/import-url'):
+            return self.send_json(404, {'error': 'Unknown endpoint.'})
+        try:
+            self.same_origin()
             length = int(self.headers.get('Content-Length', '0'))
             limit = MAX_FILE_BYTES if self.path == '/api/import-file' else 4096
             if length <= 0 or length > limit:
@@ -324,10 +374,24 @@ class Handler(SimpleHTTPRequestHandler):
                 payload = json.loads(body.decode('utf-8'))
                 result = extract_article(str(payload.get('url', '')).strip())
             self.send_json(200, result)
+        except SyncError as exc:
+            self.send_json(exc.status, {'error': str(exc)})
         except ImportErrorMessage as exc:
             self.send_json(400, {'error': str(exc)})
         except (ValueError, UnicodeError, json.JSONDecodeError):
             self.send_json(400, {'error': 'The import request is not valid.'})
+
+    def do_PUT(self):
+        try:
+            self.send_json(200, self.sync_request())
+        except SyncError as exc:
+            self.send_json(exc.status, {'error': str(exc)})
+
+    def do_DELETE(self):
+        try:
+            self.send_json(200, self.sync_request())
+        except SyncError as exc:
+            self.send_json(exc.status, {'error': str(exc)})
 
 
 def main():

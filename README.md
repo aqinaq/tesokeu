@@ -9,7 +9,7 @@ Tesokeu (тез оқу, “read fast”) is a focused reading website. It shows 
 - **Insights:** words read, focus time, sessions, completed reads, a seven-day activity chart, and an optional weekly reading goal.
 - **Guide:** product explanation, keyboard shortcuts, and answers to common questions.
 
-Books, extracted article text, bookmarks, progress, preferences, activity, and the weekly goal are saved in this browser's local storage. Existing data from the earlier Stillword prototype is retained. Use **Download backup** on the Bookshelf page to save a JSON copy; restoring one replaces the current browser data after confirmation. The local server extracts text and returns it to the browser; it does not store uploaded files or fetched articles.
+Books, extracted article text, bookmarks, progress, preferences, activity, and the weekly goal are saved in this browser's local storage. Optional device sync copies this data to a protected online collection so paired browsers can exchange changes. Existing data from the earlier Stillword prototype is retained. Use **Download backup** on the Bookshelf page to save a JSON copy; restoring one replaces the current browser data after confirmation. The import server extracts text and returns it to the browser; it does not retain uploaded files or fetched articles outside an opted-in synced collection.
 
 ## Run locally
 
@@ -27,4 +27,6 @@ Run parser tests with `.venv/bin/python -m unittest discover -s tests -v`.
 
 ## Deploy
 
-The included `render.yaml` configures a free Python web service on Render. Connect this repository through Render's Blueprint flow. The service installs `requirements.txt`, runs `python server.py`, and listens on Render's `PORT`. The same server provides the pages and the PDF, EPUB, and article import endpoints. Reading data remains in each visitor's browser and does not sync between devices.
+The included `render.yaml` configures a free Python web service on Render. Connect this repository through Render's Blueprint flow. The service installs `requirements.txt`, runs `python server.py`, and listens on Render's `PORT`. The same server provides the pages and the PDF, EPUB, article import, and optional device sync endpoints. Reading data remains in each visitor's browser until they opt in to device sync.
+
+To enable device sync, configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as secret environment variables on the web service. The Redis database must be durable; the web service's local filesystem is not. The 12-character pairing code expires after 10 minutes and can be used once. The device credential stays in each browser's local storage. Backups intentionally do not include that credential.
