@@ -1,11 +1,18 @@
 import io
+import json
+import threading
 import unittest
 import zipfile
+from email.message import Message
+from http.server import ThreadingHTTPServer
+from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
-from server import ArticleParser, ImportErrorMessage, extract_epub, extract_pdf, public_url
+from server import ArticleParser, Handler, ImportErrorMessage, extract_article, extract_epub, extract_pdf, public_url
 
 
 class ImportTests(unittest.TestCase):
@@ -55,6 +62,68 @@ class ImportTests(unittest.TestCase):
         for url in ('http://127.0.0.1:4173/', 'http://localhost/', 'file:///etc/passwd'):
             with self.subTest(url=url), self.assertRaises(ImportErrorMessage):
                 public_url(url)
+
+    def test_article_preserves_line_breaks_and_self_closing_elements(self):
+        parser = ArticleParser()
+        parser.feed('<article><p>First line of a paragraph with enough readable text.<br>Second line<br/>Third line<svg/> and the ending.</p></article>')
+        text = parser.result()[2]
+        self.assertIn('text.\nSecond line\nThird line', text)
+        self.assertIn('and the ending.', text)
+
+    def test_article_falls_back_from_unknown_charset(self):
+        response = MagicMock()
+        response.status = 200
+        response.headers = Message()
+        response.headers['Content-Type'] = 'text/html; charset=made-up-encoding'
+        response.read.return_value = ('<article><p>' + 'Readable article text. ' * 15 + '</p></article>').encode()
+        connection = MagicMock()
+        connection.getresponse.return_value = response
+        addresses = [(2, 1, 6, '', ('93.184.216.34', 80))]
+        with patch('server.socket.getaddrinfo', return_value=addresses), patch('server.http.client.HTTPConnection', return_value=connection):
+            result = extract_article('http://example.com/article')
+        self.assertIn('Readable article text.', result['text'])
+        connection.close.assert_called_once()
+
+
+class ImportHTTPTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.origin = f'http://127.0.0.1:{cls.server.server_port}'
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join()
+
+    def test_malformed_article_requests_return_json_errors(self):
+        for payload in ([], None, 'url', 123, {}, {'url': []}):
+            with self.subTest(payload=payload):
+                request = Request(self.origin + '/api/import-url', data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json'})
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(request, timeout=5)
+                self.assertEqual(error.exception.code, 400)
+                self.assertIn('error', json.load(error.exception))
+
+    def test_private_files_are_not_served(self):
+        for path in ('/server.py', '/.git/config', '/requirements.txt'):
+            with self.subTest(path=path), self.assertRaises(HTTPError) as error:
+                urlopen(self.origin + path, timeout=5)
+            self.assertEqual(error.exception.code, 404)
+
+    def test_static_assets_revalidate_after_updates(self):
+        for path in ('/', '/app.js', '/styles.css'):
+            with self.subTest(path=path), urlopen(self.origin + path, timeout=5) as response:
+                self.assertEqual(response.headers['Cache-Control'], 'no-cache')
+
+    def test_cross_origin_import_is_rejected(self):
+        request = Request(self.origin + '/api/import-url', data=b'{"url":"http://example.com"}', headers={'Origin': 'https://other.example'})
+        with self.assertRaises(HTTPError) as error:
+            urlopen(request, timeout=5)
+        self.assertEqual(error.exception.code, 403)
 
 
 if __name__ == '__main__':

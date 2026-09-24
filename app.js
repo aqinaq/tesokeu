@@ -11,6 +11,16 @@ const elements = {
 };
 
 function wordsFor(text) { return (text || '').trim().match(/\S+/g) || []; }
+const wordCache = new WeakMap();
+function bookWords(book) {
+  if (!book) return [];
+  let cached = wordCache.get(book);
+  if (!cached || cached.text !== book.text) {
+    cached = { text: book.text, words: wordsFor(book.text) };
+    wordCache.set(book, cached);
+  }
+  return cached.words;
+}
 function loadJSON(key, fallback) { try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; } catch { return fallback; } }
 function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ books: state.books, activeId: state.activeId })); return true; } catch { return false; } }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ speed: state.speed, theme: state.theme, size: state.size, punctuation: state.punctuation })); } catch {} }
@@ -31,15 +41,20 @@ const state = {
 const requestedBook = new URLSearchParams(location.search).get('book');
 if (requestedBook && state.books.some(b => b.id === requestedBook)) state.activeId = requestedBook;
 if (!state.books.some(b => b.id === state.activeId)) state.activeId = state.books[0]?.id || null;
+state.books.forEach(book => { book.position = clampPosition(book.position, bookWords(book).length); });
 const requestedPosition = new URLSearchParams(location.search).get('at');
-if (requestedBook && requestedPosition !== null && /^\d+$/.test(requestedPosition)) {
+if (requestedBook === state.activeId && requestedPosition !== null && /^\d+$/.test(requestedPosition)) {
   const book = state.books.find(b => b.id === state.activeId);
   if (book) { book.position = Math.min(wordsFor(book.text).length, Number(requestedPosition)); save(); }
 }
+if (requestedBook === state.activeId) save();
 
 function activeBook() { return state.books.find(b => b.id === state.activeId); }
-function activeWords() { return wordsFor(activeBook()?.text); }
-function stop() { state.playing = false; clearTimeout(state.timer); state.timer = null; renderPlayback(); }
+function activeWords() { return bookWords(activeBook()); }
+let pendingSave = null;
+function flushProgress() { if (pendingSave === null) return; clearTimeout(pendingSave); pendingSave = null; save(); saveStats(); }
+function queueProgressSave() { if (pendingSave === null) pendingSave = setTimeout(flushProgress, 1000); }
+function stop() { state.playing = false; clearTimeout(state.timer); state.timer = null; flushProgress(); renderPlayback(); }
 let renderedBookmarksKey = '';
 function clampPosition(value, total = activeWords().length) { return Math.max(0, Math.min(total, Math.round(Number(value) || 0))); }
 function positionExcerpt(index) { return activeWords().slice(Math.max(0, index - 3), index + 5).join(' ') || 'End of read'; }
@@ -67,8 +82,8 @@ function renderShelf() {
   elements.count.textContent = state.books.length;
   elements.list.replaceChildren();
   state.books.forEach(book => {
-    const words = wordsFor(book.text);
-    const item = document.createElement('button'); item.type = 'button'; item.className = `book-item${book.id === state.activeId ? ' active' : ''}`;
+    const words = bookWords(book);
+    const item = document.createElement('a'); item.href = `./reader.html?book=${encodeURIComponent(book.id)}`; item.className = `book-item${book.id === state.activeId ? ' active' : ''}`;
     item.setAttribute('aria-label', `Read ${book.title}`);
     const cover = document.createElement('span'); cover.className = 'book-cover'; cover.style.background = book.color || '#8eab95';
     const glyph = document.createElement('span'); glyph.textContent = book.glyph || '✦'; cover.append(glyph);
@@ -79,17 +94,31 @@ function renderShelf() {
     const fill = document.createElement('span'); fill.style.width = `${words.length ? Math.min(100, 100 * (book.position || 0) / words.length) : 0}%`; bar.append(fill);
     meta.append(title, detail, bar); item.append(cover, meta);
     if (book.id === state.activeId) { const chevron = document.createElement('span'); chevron.className = 'book-chevron'; chevron.textContent = '›'; item.append(chevron); }
-    item.addEventListener('click', () => selectBook(book.id)); elements.list.append(item);
+    item.addEventListener('click', () => { stop(); state.activeId = book.id; save(); }); elements.list.append(item);
   });
+}
+
+function renderShelfProgress() {
+  const book = activeBook(), total = activeWords().length;
+  const item = elements.list.querySelector('.book-item.active');
+  if (!book || !item) return;
+  const percent = total ? Math.round(100 * book.position / total) : 0;
+  item.querySelector('small').textContent = `${total} words · ${book.position ? `${percent}% read` : 'Not started'}`;
+  item.querySelector('.book-progress span').style.width = `${percent}%`;
 }
 
 function renderReader() {
   const book = activeBook(); const words = activeWords();
+  if (document.body.classList.contains('reader-page')) document.title = `${book?.title || 'Read'} — Tesokeu`;
   elements.title.textContent = book?.title || 'Your next read starts here';
   elements.author.textContent = book ? `${words.length} words · ${book.author || 'Your bookshelf'}` : 'Add a text to begin reading';
   $('#position-slider').max = Math.max(0, words.length - 1);
   $('#position-slider').disabled = !words.length;
   $('#bookmark-add').disabled = !words.length;
+  $('#word-number').max = Math.max(1, words.length);
+  $('#word-number').disabled = !words.length;
+  $('#jump-word').disabled = !words.length;
+  if (document.activeElement !== $('#word-number')) $('#word-number').value = words.length ? Math.min(book.position + 1, words.length) : '';
   renderBookmarks();
   if (!book || !words.length) {
     renderWord('Ready?'); elements.position.textContent = '00 / 00'; elements.time.textContent = '—';
@@ -148,6 +177,8 @@ function renderContext() {
 function applyPreferences() {
   $('#reader-card').classList.remove('theme-dark', 'theme-light', 'theme-sepia', 'size-small', 'size-medium', 'size-large');
   $('#reader-card').classList.add(`theme-${state.theme}`, `size-${state.size}`);
+  $('#reader').classList.remove('theme-dark', 'theme-light', 'theme-sepia');
+  $('#reader').classList.add(`theme-${state.theme}`);
   document.querySelectorAll('[data-theme]').forEach(button => button.classList.toggle('selected', button.dataset.theme === state.theme));
   document.querySelectorAll('[data-size]').forEach(button => button.classList.toggle('selected', button.dataset.size === state.size));
   $('#punctuation-toggle').checked = state.punctuation;
@@ -160,7 +191,6 @@ function renderPlayback() {
   renderReader();
 }
 
-function selectBook(id) { stop(); state.activeId = id; save(); renderShelf(); renderReader(); document.querySelector('#reader').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 function setPosition(value) { const book = activeBook(); if (!book) return; book.position = clampPosition(value); save(); renderReader(); renderShelf(); }
 function delayFor(word) { const base = 60000 / state.speed; return state.punctuation ? base * (/[.!?][”’"']?$/.test(word) ? 1.7 : /[,;:][”’"']?$/.test(word) ? 1.3 : 1) : base; }
 function scheduleNext() {
@@ -175,12 +205,11 @@ function scheduleNext() {
     state.stats.totalMs = (state.stats.totalMs || 0) + delay;
     state.stats.daily ||= {};
     state.stats.daily[today] = (state.stats.daily[today] || 0) + 1;
-    saveStats();
-    book.position += 1; save(); renderReader(); renderShelf();
+    book.position += 1; queueProgressSave(); renderReader(); renderShelfProgress();
     if (book.position >= words.length) stop(); else scheduleNext();
   }, delay);
 }
-function togglePlay() { const book = activeBook(); if (!book) return; if (state.playing) { stop(); return; } if (book.position >= activeWords().length) setPosition(0); state.playing = true; state.stats.sessions = (state.stats.sessions || 0) + 1; saveStats(); renderPlayback(); scheduleNext(); }
+function togglePlay(countSession = true) { const book = activeBook(); if (!book || !activeWords().length) return; if (state.playing) { stop(); return; } if (book.position >= activeWords().length) setPosition(0); state.playing = true; if (countSession) state.stats.sessions = (state.stats.sessions || 0) + 1; saveStats(); renderPlayback(); scheduleNext(); }
 function changeSpeed(value) { state.speed = Math.max(100, Math.min(900, Number(value))); elements.speed.value = state.speed; elements.speedValue.textContent = state.speed; elements.speed.style.setProperty('--fill', `${(state.speed - 100) / 8}%`); saveSettings(); renderReader(); if (state.playing) { clearTimeout(state.timer); scheduleNext(); } }
 
 function openDialog() { stop(); setTab('upload'); elements.dialog.showModal(); elements.dialog.querySelector('.dialog-tab.active').focus(); }
@@ -219,9 +248,15 @@ elements.form.addEventListener('submit', async event => {
   } catch (error) { elements.error.textContent = error.message || 'This import could not be completed.'; }
   finally { button.disabled = false; button.innerHTML = 'Add to bookshelf <span>↗</span>'; }
 });
-elements.play.addEventListener('click', togglePlay);
-$('#back-button').addEventListener('click', () => { const wasPlaying = state.playing; stop(); setPosition((activeBook()?.position || 0) - 10); if (wasPlaying) togglePlay(); });
-$('#forward-button').addEventListener('click', () => { const wasPlaying = state.playing; stop(); setPosition((activeBook()?.position || 0) + 10); if (wasPlaying && activeBook()?.position < activeWords().length) togglePlay(); });
+elements.play.addEventListener('click', () => togglePlay());
+$('#back-button').addEventListener('click', () => { const wasPlaying = state.playing; stop(); setPosition((activeBook()?.position || 0) - 10); if (wasPlaying) togglePlay(false); });
+$('#forward-button').addEventListener('click', () => { const wasPlaying = state.playing; stop(); setPosition((activeBook()?.position || 0) + 10); if (wasPlaying && activeBook()?.position < activeWords().length) togglePlay(false); });
+$('#word-jump').addEventListener('submit', event => {
+  event.preventDefault();
+  const input = $('#word-number'), number = Number(input.value);
+  if (!Number.isInteger(number) || number < 1 || number > activeWords().length) return;
+  stop(); setPosition(number - 1); input.blur();
+});
 elements.speed.addEventListener('input', event => changeSpeed(event.target.value));
 $('#position-slider').addEventListener('input', event => { const index = clampPosition(event.target.value); $('#position-preview').textContent = `${Math.round(100 * index / Math.max(1, activeWords().length))}% · ${positionExcerpt(index)}`; });
 $('#position-slider').addEventListener('change', event => { stop(); setPosition(event.target.value); $('#position-slider').blur(); });
@@ -246,7 +281,9 @@ document.addEventListener('click', event => { if (!event.target.closest('#reader
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && $('#reader').classList.contains('focus-overlay')) { $('#reader').classList.remove('focus-overlay'); document.body.classList.remove('focus-open'); updateFocusButton(); return; }
   const tag = document.activeElement?.tagName;
-  if (elements.dialog.open || ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+  if (elements.dialog.open || event.altKey || event.ctrlKey || event.metaKey || document.activeElement?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+  if (event.code === 'Space' && ['BUTTON', 'A'].includes(tag)) return;
+  if (event.repeat && event.code === 'Space') { event.preventDefault(); return; }
   if (event.code === 'Space') { event.preventDefault(); togglePlay(); }
   if (event.code === 'ArrowLeft') { event.preventDefault(); stop(); setPosition((activeBook()?.position || 0) - 10); }
   if (event.code === 'ArrowRight') { event.preventDefault(); stop(); setPosition((activeBook()?.position || 0) + 10); }
@@ -254,5 +291,6 @@ document.addEventListener('keydown', event => {
   if (event.code === 'ArrowDown') { event.preventDefault(); changeSpeed(state.speed - 25); }
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state.playing) stop(); });
+window.addEventListener('pagehide', stop);
 
 applyPreferences(); changeSpeed(state.speed); renderShelf(); renderReader();

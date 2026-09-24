@@ -4,7 +4,7 @@ Tesokeu (тез оқу, “read fast”) is a focused reading website. It shows 
 
 ## Pages
 
-- **Reader:** one-word display, adjustable speed (100–900 WPM), play/pause, skipping, position slider with text preview, bookmarks, focus view, nearby text, themes, word size, and punctuation pauses.
+- **Reader:** selecting a book opens a dedicated reading page with a one-word display, adjustable speed (100–900 WPM), play/pause, skipping, position slider with text preview, exact word navigation, bookmarks, focus view, nearby text, themes, word size, and punctuation pauses.
 - **Bookshelf:** sample reads, pasted text, PDF/EPUB/TXT upload, public article links, search, filters, sorting, saved positions, and JSON backup/restore.
 - **Insights:** words read, focus time, sessions, completed reads, a seven-day activity chart, and an optional weekly reading goal.
 - **Guide:** product explanation, keyboard shortcuts, and answers to common questions.
@@ -23,7 +23,9 @@ Then open [http://localhost:4173](http://localhost:4173). The import features re
 
 Keyboard shortcuts in the reader: Space to play or pause, Left and Right to skip 10 words, Up and Down to change speed.
 
-Run parser tests with `.venv/bin/python -m unittest discover -s tests -v`.
+Run import and sync tests with `.venv/bin/python -m unittest discover -s tests -v`. Run reader regression tests with `node --test tests/test_reader.cjs` (Node.js 18+).
+
+During playback, word lists are cached and progress is saved at most once per second, with an immediate save when pausing, hiding the tab, or leaving the page.
 
 ## Deploy
 

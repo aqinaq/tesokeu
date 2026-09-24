@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f6f4ed" />
     <meta name="description" content="A calm, focused way to read one word at a time." />
-    <title>Tesokeu — Read at your pace</title>
+    <title>Read — Tesokeu</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,400,20,1;9..144,500,20,1;9..144,600,20,1&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
+  <body class="reader-page">
     <div class="app-shell">
       <header class="site-header">
         <a class="brand" href="./index.html" aria-label="Tesokeu home"><span class="brand-mark"><span></span><span></span><span></span></span><span>tesokeu<span class="brand-dot">.</span></span></a>
@@ -25,14 +25,7 @@
       </header>
 
       <main id="top">
-        <section class="intro" aria-labelledby="page-title">
-          <div class="intro-copy">
-            <div class="eyebrow"><span class="eyebrow-line"></span> Тез оқу · read with focus</div>
-            <h1 id="page-title">Read in your <em>own rhythm.</em></h1>
-            <p>Tesokeu means “read fast.” Keep your eyes in one place, find a comfortable pace, and let the words come to you.</p>
-          </div>
-          <div class="intro-aside" aria-hidden="true"><span class="asterisk">✳</span><span>Less scanning.<br />More reading.</span></div>
-        </section>
+        <a class="reader-back" href="./library.html">← Back to bookshelf</a>
 
         <div class="workspace">
           <aside class="bookshelf" id="library" aria-labelledby="library-title">
@@ -74,7 +67,6 @@
           </section>
         </div>
 
-        <section class="how" id="how-it-works"><div class="how-heading"><span class="section-kicker">THE IDEA</span><h2>Make room for the words.</h2></div><p>Traditional reading asks your eyes to travel across every line. Tesokeu keeps each word in one spot, so you can settle in and set a pace that feels right for you.</p><div class="how-steps"><div><span>01</span><strong>Pick something to read</strong><p>Choose a sample, paste text, import a file, or add an article link.</p></div><div><span>02</span><strong>Find your pace</strong><p>Slide from a gentle 100 to a brisk 900 words per minute.</p></div><div><span>03</span><strong>Stay in the flow</strong><p>Pause, jump back, and pick up where you left off.</p></div></div></section>
       </main>
       <footer class="site-footer"><span>tesokeu<span class="brand-dot">.</span></span><span>Тез оқу · Made for the joy of reading.</span></footer>
     </div>

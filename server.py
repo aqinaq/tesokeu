@@ -96,10 +96,16 @@ class ArticleParser(HTMLParser):
             if key in ('author', 'article:author', 'parsely-author') and content and not self.author:
                 self.author = content
         if tag in ('meta', 'br', 'hr', 'img', 'link', 'input'):
+            if tag == 'br' and self.capture:
+                self.capture['parts'].append('\n')
             return
         if tag in ('p', 'h1', 'h2', 'h3') and not any(name in SKIP_TAGS for name in self.stack):
             self.capture = {'tag': tag, 'parts': [], 'article': 'article' in self.stack, 'main': 'main' in self.stack}
         self.stack.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
         if self.capture and tag == self.capture['tag']:
@@ -259,7 +265,11 @@ def extract_article(url: str) -> dict:
     except Exception as exc:
         raise ImportErrorMessage('The article could not be loaded. Try another link or paste the text.') from exc
     parser = ArticleParser()
-    parser.feed(raw.decode(charset, errors='replace'))
+    try:
+        source = raw.decode(charset, errors='replace')
+    except LookupError:
+        source = raw.decode('utf-8', errors='replace')
+    parser.feed(source)
     title, author, text = parser.result()
     if len(text.split()) < 25:
         raise ImportErrorMessage('Not enough article text was found. This site may block automated reading; try pasting its text.')
@@ -270,13 +280,19 @@ def extract_article(url: str) -> dict:
 
 class Handler(SimpleHTTPRequestHandler):
     ALLOWED_FILES = {
-        'index.html', 'library.html', 'insights.html', 'guide.html',
+        'index.html', 'reader.html', 'library.html', 'insights.html', 'guide.html',
         'styles.css', 'pages.css', 'data.js', 'app.js', 'pages.js', 'import.js', 'sync.js',
     }
 
     def allowed_static(self):
         path = urlparse(self.path).path.lstrip('/') or 'index.html'
         return path in self.ALLOWED_FILES
+
+    def end_headers(self):
+        # Unversioned assets must be revalidated after a deployment.
+        if self.command in ('GET', 'HEAD') and self.allowed_static():
+            self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
 
     def do_GET(self):
         if self.path == '/api/sync/state':
@@ -372,7 +388,9 @@ class Handler(SimpleHTTPRequestHandler):
                     raise ImportErrorMessage('Choose a PDF or EPUB file.')
             else:
                 payload = json.loads(body.decode('utf-8'))
-                result = extract_article(str(payload.get('url', '')).strip())
+                if not isinstance(payload, dict) or not isinstance(payload.get('url'), str):
+                    raise ImportErrorMessage('Enter a public http or https article URL.')
+                result = extract_article(payload['url'].strip())
             self.send_json(200, result)
         except SyncError as exc:
             self.send_json(exc.status, {'error': str(exc)})

@@ -17,7 +17,7 @@ if (!stored) save();
 function progress(book) { const total = countWords(book.text); return total ? Math.min(100, Math.round(100 * (book.position || 0) / total)) : 0; }
 function status(book) { const total = countWords(book.text); return book.position >= total && total ? 'Finished' : book.position > 0 ? 'Reading' : 'Not started'; }
 function node(tag, className, text) { const item = document.createElement(tag); if (className) item.className = className; if (text != null) item.textContent = text; return item; }
-function readerURL(book, at) { return `./index.html?book=${encodeURIComponent(book.id)}${at == null ? '' : `&at=${encodeURIComponent(at)}`}`; }
+function readerURL(book, at) { return `./reader.html?book=${encodeURIComponent(book.id)}${at == null ? '' : `&at=${encodeURIComponent(at)}`}`; }
 
 function renderLibrary() {
   $('#total-books').textContent = state.books.length;
@@ -33,12 +33,12 @@ function renderLibrary() {
   $('#library-empty').hidden = shown.length > 0;
   shown.forEach(book => {
     const card = node('article', 'library-card');
-    const main = node('div', 'library-card-main');
+    const main = node('a', 'library-card-main'); main.href = readerURL(book); main.setAttribute('aria-label', `Read ${book.title}`);
     const cover = node('div', 'library-cover', book.glyph || '✦'); cover.style.background = book.color || '#8eab95';
     const copy = node('div', 'library-card-copy');
     copy.append(node('span', 'reading-state', `${status(book).toUpperCase()}${book.kind ? ` · ${book.kind.toUpperCase()}` : ''}`), node('h3', '', book.title), node('p', 'author', book.author === 'Stillword Library' ? 'Tesokeu Library' : book.author || 'Your bookshelf'));
     main.append(cover, copy);
-    const excerpt = node('p', 'excerpt', book.text.replace(/\s+/g, ' ').slice(0, 175));
+    const excerpt = node('a', 'excerpt', book.text.replace(/\s+/g, ' ').slice(0, 175)); excerpt.href = readerURL(book); excerpt.setAttribute('aria-label', `Read ${book.title}`);
     const bottom = node('div', 'library-card-bottom');
     const bar = node('div', 'library-card-progress'); const fill = node('span'); fill.style.width = `${progress(book)}%`; bar.append(fill);
     const meta = node('div', 'library-card-meta'); meta.append(node('span', '', `${countWords(book.text).toLocaleString()} words`), node('span', '', `${progress(book)}% complete`));
