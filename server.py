@@ -289,9 +289,13 @@ class Handler(SimpleHTTPRequestHandler):
         return path in self.ALLOWED_FILES
 
     def end_headers(self):
-        # Unversioned assets must be revalidated after a deployment.
+        # Keep the browser from pinning an older deployment at the canonical URL.
+        # The app is small, and correctness after deploys matters more than reusing
+        # a stale local response.
         if self.command in ('GET', 'HEAD') and self.allowed_static():
-            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
         super().end_headers()
 
     def do_GET(self):

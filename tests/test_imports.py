@@ -117,7 +117,9 @@ class ImportHTTPTests(unittest.TestCase):
     def test_static_assets_revalidate_after_updates(self):
         for path in ('/', '/app.js', '/styles.css'):
             with self.subTest(path=path), urlopen(self.origin + path, timeout=5) as response:
-                self.assertEqual(response.headers['Cache-Control'], 'no-cache')
+                self.assertEqual(response.headers['Cache-Control'], 'no-store, no-cache, must-revalidate, max-age=0')
+                self.assertEqual(response.headers['Pragma'], 'no-cache')
+                self.assertEqual(response.headers['Expires'], '0')
 
     def test_cross_origin_import_is_rejected(self):
         request = Request(self.origin + '/api/import-url', data=b'{"url":"http://example.com"}', headers={'Origin': 'https://other.example'})
