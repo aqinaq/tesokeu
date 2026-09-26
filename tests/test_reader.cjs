@@ -169,3 +169,20 @@ test('space preserves native button actions and ignores held-key repeats', () =>
   app.document.listeners.keydown({ ...event, repeat: true });
   assert.equal(app.run('state.playing'), true);
 });
+
+test('long words receive extra viewing time when the comprehension setting is on', () => {
+  const app = reader();
+  assert.equal(app.run("delayFor('short')"), 200);
+  assert.equal(app.run("delayFor('characteristically')"), 270);
+  app.get('#long-word-toggle').checked = false;
+  app.get('#long-word-toggle').listeners.change({ target: app.get('#long-word-toggle') });
+  assert.equal(app.run("delayFor('characteristically')"), 200);
+});
+
+test('opening nearby text pauses playback and exposes expanded state', () => {
+  const app = reader();
+  app.click('#play-button');
+  app.click('#context-toggle');
+  assert.equal(app.run('state.playing'), false);
+  assert.equal(app.get('#context-toggle').attributes['aria-expanded'], 'true');
+});

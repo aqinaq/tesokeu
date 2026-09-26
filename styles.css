@@ -8,7 +8,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .advanced-header h3{font-family:'Noto Serif',Georgia,serif;font-size:21px;font-weight:500;margin:6px 0 0}
 .text-button{border:0;background:none;padding:5px 0;color:#547b5e;font-size:11px;font-weight:700}
 .text-button:hover{text-decoration:underline}
-.preference-grid{display:grid;grid-template-columns:1fr 1fr 1.45fr;gap:13px;padding-bottom:22px}
+.preference-grid{display:grid;grid-template-columns:.9fr .9fr 1.2fr 1.2fr;gap:13px;padding-bottom:22px}
 .preference{display:flex;flex-direction:column;gap:9px;font-size:11px;font-weight:700;min-width:0}
 .preference small{display:block;font-size:10px;font-weight:400;color:#9aa49a;margin-top:4px;line-height:1.3}
 .segmented{display:flex;background:#efefe8;border:1px solid #e4e6dc;border-radius:7px;padding:3px;gap:2px}
@@ -17,9 +17,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 #size-buttons button:nth-child(1){font-size:10px}#size-buttons button:nth-child(2){font-size:13px}#size-buttons button:nth-child(3){font-size:17px}
 .toggle-preference{flex-direction:row;align-items:center;justify-content:space-between;gap:10px;padding-left:4px}.toggle-preference input{position:absolute;opacity:0;width:1px;height:1px}.switch{flex:none;width:34px;height:20px;background:#cbd1c7;border-radius:20px;position:relative;transition:background .2s}.switch:after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s}.toggle-preference input:checked+.switch{background:#689675}.toggle-preference input:checked+.switch:after{transform:translateX(14px)}.toggle-preference input:focus-visible+.switch{outline:3px solid #dd9a72;outline-offset:3px}
 .context-panel{border-top:1px solid var(--line);padding:20px 2px 23px}.context-panel[hidden]{display:none}.context-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.context-head strong{font-family:'Noto Serif',Georgia,serif;font-size:16px;font-weight:500}.context-head span{font-size:10px;color:#9da79c}.context-text{max-height:170px;overflow:auto;line-height:1.95}.context-word{border:0;background:none;padding:2px 1px;color:#6c786e;font-size:12px;line-height:1.8}.context-word:hover{color:var(--ink);text-decoration:underline}.context-word.current{background:#dce9d7;border-radius:3px;color:#284132}.context-ellipsis{color:#9da79c}
-.reader-card.theme-light{background:#eeeee8;color:#26352d}.reader-card.theme-sepia{background:#e7d7b9;color:#44372b}.reader-card.theme-light .reader-card-top,.reader-card.theme-light .reader-card-bottom{color:#738176}.reader-card.theme-sepia .reader-card-top,.reader-card.theme-sepia .reader-card-bottom{color:#806f59}.reader-card.theme-light .progress-track{background:#d0d9cd}.reader-card.theme-sepia .progress-track{background:#c5b28f}.reader-card.theme-light .guide,.reader-card.theme-sepia .guide{background:#718c70}.reader-card.theme-light .focus-letter{color:#bb664d}.reader-card.theme-sepia .focus-letter{color:#a7523c}.reader-card.size-small .display-word{font-size:clamp(34px,4.5vw,53px)}.reader-card.size-large .display-word{font-size:clamp(48px,7vw,82px)}
+.reader-card.theme-light{background:#eeeee8;color:#26352d}.reader-card.theme-sepia{background:#e7d7b9;color:#44372b}.reader-card.theme-light .reader-card-top,.reader-card.theme-light .reader-card-bottom{color:#738176}.reader-card.theme-sepia .reader-card-top,.reader-card.theme-sepia .reader-card-bottom{color:#806f59}.reader-card.theme-light .progress-track{background:#d0d9cd}.reader-card.theme-sepia .progress-track{background:#c5b28f}.reader-card.theme-light .guide,.reader-card.theme-sepia .guide{background:#718c70}.reader-card.theme-light .focus-letter{color:#bb664d}.reader-card.theme-sepia .focus-letter{color:#a7523c}.reader-card.size-small .display-word{font-size:clamp(2.125rem,4.5vw,3.3125rem)}.reader-card.size-large .display-word{font-size:clamp(3rem,7vw,5.125rem)}
 @media(max-width:1100px){.preference-grid{grid-template-columns:1fr 1fr}.toggle-preference{grid-column:1/-1}}
-@media(max-width:520px){.advanced-header{align-items:flex-start}.preference-grid{gap:12px}.segmented button{padding:6px 5px}.reader-card.size-small .display-word{font-size:33px}.reader-card.size-large .display-word{font-size:52px}}
+@media(max-width:520px){.advanced-header{align-items:flex-start;flex-direction:column}.preference-grid{gap:12px}.segmented button{padding:6px 5px}.reader-card.size-small .display-word{font-size:2.0625rem}.reader-card.size-large .display-word{font-size:3.25rem}}
+
+/* The pivot stays on the centre guide. JS reduces only unusually long words. */
+.display-word{width:100%;font-size:clamp(2.5rem,6vw,4.375rem)}
+.word-before,.word-after{width:auto;flex:1 1 0;min-width:0;overflow:visible}
+.display-word.fit-balanced{justify-content:center}
+.display-word.fit-balanced .word-before,.display-word.fit-balanced .word-after{flex:none;width:auto}
+.word-stage{padding-inline:1rem}
+.context-word.current{outline:2px solid currentColor;outline-offset:1px}
+@media (forced-colors:active){.focus-letter{forced-color-adjust:none;color:Highlight}.guide{background:CanvasText}.context-word.current{outline-color:Highlight}}
 
 @media(max-width:760px){.site-header{height:auto;min-height:72px;flex-wrap:wrap;padding-top:12px}.top-nav{display:flex;order:3;width:100%;margin-left:0;gap:18px;overflow-x:auto;justify-content:space-between}.nav-link{padding:13px 0 12px;white-space:nowrap;font-size:11px}.header-add{font-size:11px}}
 

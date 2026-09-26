@@ -3,93 +3,62 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f4ed" />
+    <meta name="theme-color" content="#f4f1e8" />
     <meta name="description" content="A calm, focused way to read one word at a time." />
     <title>Tesokeu — Read at your pace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=noto-1" />
+    <link rel="stylesheet" href="./pages.css?v=noto-1" />
+    <link rel="stylesheet" href="./design.css?v=editorial-1" />
   </head>
-  <body>
+  <body data-page="home">
     <div class="app-shell">
       <header class="site-header">
         <a class="brand" href="./index.html" aria-label="Tesokeu home"><span class="brand-mark"><span></span><span></span><span></span></span><span>tesokeu<span class="brand-dot">.</span></span></a>
         <nav class="top-nav" aria-label="Main navigation">
-          <a class="nav-link active" href="./reader.html">Reader</a>
+          <a class="nav-link active" href="./index.html" aria-current="page">Home</a>
+          <a class="nav-link" href="./reader.html">Reader</a>
           <a class="nav-link" href="./library.html">Bookshelf</a>
           <a class="nav-link" href="./insights.html">Insights</a>
           <a class="nav-link" href="./guide.html">Guide</a>
         </nav>
-        <button id="header-add" class="header-add"><span class="plus">＋</span> Add a read</button>
+        <a class="header-add" href="./library.html#add"><span class="plus">＋</span> Add a read</a>
       </header>
 
-      <main id="top">
-        <section class="intro" aria-labelledby="page-title">
-          <div class="intro-copy">
+      <main>
+        <section class="home-hero" aria-labelledby="page-title">
+          <div class="home-hero-copy">
             <div class="eyebrow"><span class="eyebrow-line"></span> Тез оқу · read with focus</div>
-            <h1 id="page-title">Read in your <em>own rhythm.</em></h1>
-            <p>Tesokeu means “read fast.” Keep your eyes in one place, find a comfortable pace, and let the words come to you.</p>
+            <h1 id="page-title">Make space for <em>the words.</em></h1>
+            <p>Choose something from your shelf, settle on a comfortable pace, and continue exactly where you stopped.</p>
+            <div class="home-actions">
+              <a class="primary-button" href="./reader.html">Continue reading <span>→</span></a>
+              <a class="secondary-button" href="./library.html">Open bookshelf</a>
+            </div>
           </div>
-          <div class="intro-aside" aria-hidden="true"><span class="asterisk">✳</span><span>Less scanning.<br />More reading.</span></div>
+          <div class="home-preview" aria-hidden="true">
+            <div class="preview-top"><span><i></i> FOCUS MODE</span><span>YOUR PACE</span></div>
+            <div class="preview-word">rea<span>d</span>ing</div>
+            <div class="preview-progress"><span></span></div>
+            <p>One word. One place. Your pace.</p>
+          </div>
         </section>
 
-        <div class="workspace">
-          <aside class="bookshelf" id="library" aria-labelledby="library-title">
-            <div class="section-heading"><div><span class="section-kicker">YOUR COLLECTION</span><h2 id="library-title">Bookshelf <span id="book-count" class="count">3</span></h2></div><button id="shelf-add" class="icon-button" aria-label="Add a read" title="Add a read">＋</button></div>
-            <div class="shelf-subtitle">A little space for everything you want to read.</div>
-            <div id="book-list" class="book-list"></div>
-            <button id="empty-add" class="shelf-add"><span class="shelf-add-icon">＋</span><span><strong>Add your own text</strong><small>Paste, upload, or add a link</small></span><span class="shelf-arrow">↗</span></button>
-            <div class="shelf-footer"><span class="tiny-sparkle">✳</span> Your bookshelf stays here unless you connect devices.</div>
-          </aside>
+        <section class="home-paths" aria-labelledby="start-title">
+          <div class="home-section-heading"><div><span class="section-kicker">START HERE</span><h2 id="start-title">What would you like to do?</h2></div><p>Each area has one clear job, so you always know where you are.</p></div>
+          <div class="home-path-grid">
+            <a class="home-path featured" href="./reader.html"><span class="path-number">01</span><div><span class="path-kicker">READER</span><h3>Continue your current read</h3><p>Open the focused reader at your saved position.</p></div><span class="path-arrow">→</span></a>
+            <a class="home-path" href="./library.html"><span class="path-number">02</span><div><span class="path-kicker">BOOKSHELF</span><h3>Choose or add something</h3><p>Search your collection, import a file, or paste text.</p></div><span class="path-arrow">→</span></a>
+            <a class="home-path" href="./insights.html"><span class="path-number">03</span><div><span class="path-kicker">INSIGHTS</span><h3>Review your progress</h3><p>See your activity, sessions, and weekly reading goal.</p></div><span class="path-arrow">→</span></a>
+          </div>
+        </section>
 
-          <section class="reader-section" id="reader" aria-labelledby="reader-title">
-            <div class="reader-heading"><div><span class="section-kicker">NOW READING</span><h2 id="reader-title">The Art of Noticing</h2><p id="reader-author">A short read · Tesokeu Library</p></div><div class="reader-heading-actions"><button id="bookmark-add" class="more-button" type="button" aria-label="Bookmark current word" title="Bookmark current word">☆</button><button id="fullscreen-toggle" class="more-button" type="button" aria-label="Enter focus view" title="Enter focus view">⛶</button><button id="reader-menu" class="more-button" aria-label="More reading options" title="Reading options">···</button></div><div id="reader-options" class="options-menu" hidden><button id="restart-option">Start from beginning</button><button id="delete-option">Remove from bookshelf</button></div></div>
-
-            <div class="reader-card" id="reader-card">
-              <div class="reader-card-top"><span><span class="live-dot"></span> FOCUS MODE</span><span id="reader-position">01 / 217</span></div>
-              <div class="word-stage" aria-live="off"><div class="guide top"></div><div id="display-word" class="display-word"><span class="word-before">Some</span><span class="focus-letter">t</span><span class="word-after">hing</span></div><div class="guide bottom"></div></div>
-              <div class="reader-card-bottom"><span id="stage-hint">Press play or tap space to begin</span><span id="reading-time">~1 min left</span></div>
-              <div class="progress-track" aria-label="Reading progress"><div id="progress-fill" class="progress-fill"></div></div>
-            </div>
-
-            <div class="read-navigation"><label for="position-slider">Jump through this read</label><input id="position-slider" type="range" min="0" max="0" value="0" aria-label="Reading position" /><span id="position-preview">Start</span></div>
-            <form id="word-jump" class="word-jump"><label for="word-number">Go to word</label><input id="word-number" type="number" inputmode="numeric" min="1" step="1" required aria-label="Word number" /><button id="jump-word" type="submit">Go <span aria-hidden="true">→</span></button></form>
-            <div class="bookmark-panel"><div class="bookmark-heading"><strong>Bookmarks</strong><span id="bookmark-count">0 saved</span></div><div id="bookmark-list" class="bookmark-list"></div></div>
-
-            <div class="control-panel">
-              <div class="playback-controls"><button id="back-button" class="transport-button" aria-label="Back 10 words" title="Back 10 words"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8v6h6"/><path d="M5.5 13.7a7.5 7.5 0 1 0 1.9-6.7L5 9"/></svg><span>10</span></button><button id="play-button" class="play-button" aria-label="Play"><svg id="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10-6.5z"/></svg></button><button id="forward-button" class="transport-button" aria-label="Forward 10 words" title="Forward 10 words"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 8v6h-6"/><path d="M18.5 13.7a7.5 7.5 0 1 1-1.9-6.7L19 9"/></svg><span>10</span></button></div>
-              <div class="speed-control"><div class="speed-top"><label for="speed-slider">Reading speed</label><strong><span id="speed-value">300</span> <small>WPM</small></strong></div><div class="slider-row"><span>Slow</span><input id="speed-slider" type="range" min="100" max="900" step="25" value="300" /><span>Fast</span></div></div>
-            </div>
-            <div class="reader-advanced">
-              <div class="advanced-header"><div><span class="section-kicker">MAKE IT YOURS</span><h3>Reading preferences</h3></div><button id="context-toggle" class="text-button" type="button">View nearby text ↗</button></div>
-              <div class="preference-grid">
-                <div class="preference"><span>Display</span><div class="segmented" id="theme-buttons"><button type="button" data-theme="dark">Night</button><button type="button" data-theme="light">Paper</button><button type="button" data-theme="sepia">Warm</button></div></div>
-                <div class="preference"><span>Word size</span><div class="segmented" id="size-buttons"><button type="button" data-size="small">A</button><button type="button" data-size="medium">A</button><button type="button" data-size="large">A</button></div></div>
-                <label class="preference toggle-preference"><span>Pause at punctuation <small>Give sentences a little breathing room</small></span><input id="punctuation-toggle" type="checkbox" checked /><span class="switch"></span></label>
-              </div>
-              <div id="context-panel" class="context-panel" hidden><div class="context-head"><strong>Nearby text</strong><span>Click a word to jump there</span></div><div id="context-text" class="context-text"></div></div>
-            </div>
-            <div class="reader-tips"><span><kbd>SPACE</kbd> play / pause</span><span><kbd>←</kbd><kbd>→</kbd> skip 10 words</span><span><kbd>↑</kbd><kbd>↓</kbd> adjust speed</span></div>
-          </section>
-        </div>
-
-        <section class="how" id="how-it-works"><div class="how-heading"><span class="section-kicker">THE IDEA</span><h2>Make room for the words.</h2></div><p>Traditional reading asks your eyes to travel across every line. Tesokeu keeps each word in one spot, so you can settle in and set a pace that feels right for you.</p><div class="how-steps"><div><span>01</span><strong>Pick something to read</strong><p>Choose a sample, paste text, import a file, or add an article link.</p></div><div><span>02</span><strong>Find your pace</strong><p>Slide from a gentle 100 to a brisk 900 words per minute.</p></div><div><span>03</span><strong>Stay in the flow</strong><p>Pause, jump back, and pick up where you left off.</p></div></div></section>
+        <section class="home-note"><span aria-hidden="true">✳</span><div><strong>Read for understanding, not a number.</strong><p>Tesokeu keeps words in one place to reduce visual distraction. Slow down, pause, or open nearby text whenever meaning starts to slip.</p></div><a href="./guide.html">How Tesokeu works →</a></section>
       </main>
+
       <footer class="site-footer"><span>tesokeu<span class="brand-dot">.</span></span><span>Тез оқу · Made for the joy of reading.</span></footer>
     </div>
-
-    <dialog id="add-dialog" class="add-dialog"><form id="add-form" method="dialog">
-  <div class="dialog-header"><div><span class="section-kicker">GROW YOUR SHELF</span><h2>Add something to read</h2></div><button type="button" id="close-dialog" class="dialog-close" aria-label="Close">×</button></div>
-  <div class="dialog-tabs"><button type="button" class="dialog-tab active" data-tab="upload">PDF / EPUB</button><button type="button" class="dialog-tab" data-tab="link">Article link</button><button type="button" class="dialog-tab" data-tab="paste">Paste text</button></div>
-  <div id="paste-fields" hidden><label for="text-title">Title</label><input id="text-title" type="text" placeholder="Give this read a name" maxlength="100"><label for="text-author">Author <span>(optional)</span></label><input id="text-author" type="text" placeholder="Who wrote it?" maxlength="100"><label for="text-content">Text</label><textarea id="text-content" placeholder="Paste your article, story, or notes here..." rows="8"></textarea></div>
-  <div id="upload-fields"><label class="drop-zone" for="file-input"><span class="upload-icon">↥</span><strong>Choose a file</strong><span>PDF, EPUB, or TXT · up to 12 MB</span><input id="file-input" type="file" accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain"></label><div id="selected-file" class="selected-file"></div><p class="import-help">Text-based PDFs work best. Scanned pages need OCR first.</p></div>
-  <div id="link-fields" hidden><label for="article-url">Article URL</label><input id="article-url" type="url" placeholder="https://example.com/article" inputmode="url"><p class="import-help">Paste a public article link. Tesokeu extracts the readable text and saves it to your bookshelf.</p></div>
-  <p id="form-error" class="form-error" role="alert"></p><button type="submit" class="submit-button">Add to bookshelf <span>↗</span></button>
-</form></dialog>
-    <script src="./data.js"></script>
-    <script src="./import.js"></script>
-    <script src="./app.js?v=reader-01f04ab"></script>
-    <script src="./sync.js"></script>
   </body>
 </html>

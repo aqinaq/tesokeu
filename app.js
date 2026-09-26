@@ -23,7 +23,7 @@ function bookWords(book) {
 }
 function loadJSON(key, fallback) { try { const value = JSON.parse(localStorage.getItem(key)); return value ?? fallback; } catch { return fallback; } }
 function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ books: state.books, activeId: state.activeId })); return true; } catch { return false; } }
-function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ speed: state.speed, theme: state.theme, size: state.size, punctuation: state.punctuation })); } catch {} }
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ speed: state.speed, theme: state.theme, size: state.size, punctuation: state.punctuation, longWordPause: state.longWordPause })); } catch {} }
 function saveStats() { try { localStorage.setItem(STATS_KEY, JSON.stringify(state.stats)); } catch {} }
 
 const stored = loadJSON(STORAGE_KEY, null);
@@ -35,6 +35,7 @@ const state = {
   theme: ['dark', 'light', 'sepia'].includes(settings.theme) ? settings.theme : 'dark',
   size: ['small', 'medium', 'large'].includes(settings.size) ? settings.size : 'medium',
   punctuation: settings.punctuation !== false,
+  longWordPause: settings.longWordPause !== false,
   stats: loadJSON(STATS_KEY, { totalWords: 0, totalMs: 0, sessions: 0, daily: {} }),
   playing: false, timer: null, tab: 'upload'
 };
@@ -76,6 +77,38 @@ function renderWord(word) {
   const after = document.createElement('span'); after.className = 'word-after'; after.textContent = chars.slice(index + 1).join('');
   elements.word.append(before, focus, after);
   elements.word.setAttribute('aria-label', word);
+  fitRenderedWord();
+}
+
+// Keep the RSVP pivot centered while reducing only words that cannot fit at the
+// chosen size. Each side is measured separately because a long suffix can clip
+// even when the complete word would otherwise fit inside the stage.
+function fitRenderedWord() {
+  const stage = elements.word.parentElement;
+  if (!stage || !stage.clientWidth || typeof getComputedStyle !== 'function') return;
+  elements.word.classList.remove('fit-balanced');
+  elements.word.style.removeProperty('font-size');
+  const before = elements.word.querySelector('.word-before');
+  const focus = elements.word.querySelector('.focus-letter');
+  const after = elements.word.querySelector('.word-after');
+  if (!before || !focus || !after) return;
+  const sideWidth = Math.max(0, (stage.clientWidth - focus.offsetWidth - 32) / 2);
+  const scale = Math.min(1,
+    before.scrollWidth ? sideWidth / before.scrollWidth : 1,
+    after.scrollWidth ? sideWidth / after.scrollWidth : 1);
+  if (scale < 1) {
+    const baseSize = parseFloat(getComputedStyle(elements.word).fontSize);
+    if (baseSize * scale >= 16) {
+      elements.word.style.fontSize = `${baseSize * scale * 0.98}px`;
+    } else {
+      // For very asymmetric words, relax pivot alignment before making the text
+      // uncomfortably small. The whole word remains visible and centred.
+      elements.word.classList.add('fit-balanced');
+      const totalWidth = before.scrollWidth + focus.scrollWidth + after.scrollWidth;
+      const balancedScale = Math.min(1, (stage.clientWidth - 32) / totalWidth);
+      elements.word.style.fontSize = `${Math.max(1, baseSize * balancedScale * 0.98)}px`;
+    }
+  }
 }
 
 function renderShelf() {
@@ -169,6 +202,7 @@ function renderContext() {
     const button = document.createElement('button'); button.type = 'button';
     button.className = `context-word${i === Math.min(position, words.length - 1) ? ' current' : ''}`;
     button.textContent = words[i] + ' ';
+    if (i === Math.min(position, words.length - 1)) button.setAttribute('aria-current', 'true');
     button.addEventListener('click', () => { stop(); setPosition(i); }); container.append(button);
   }
   if (end < words.length) { const marker = document.createElement('span'); marker.className = 'context-ellipsis'; marker.textContent = '…'; container.append(marker); }
@@ -182,6 +216,7 @@ function applyPreferences() {
   document.querySelectorAll('[data-theme]').forEach(button => button.classList.toggle('selected', button.dataset.theme === state.theme));
   document.querySelectorAll('[data-size]').forEach(button => button.classList.toggle('selected', button.dataset.size === state.size));
   $('#punctuation-toggle').checked = state.punctuation;
+  $('#long-word-toggle').checked = state.longWordPause;
   saveSettings();
 }
 
@@ -192,7 +227,12 @@ function renderPlayback() {
 }
 
 function setPosition(value) { const book = activeBook(); if (!book) return; book.position = clampPosition(value); save(); renderReader(); renderShelf(); }
-function delayFor(word) { const base = 60000 / state.speed; return state.punctuation ? base * (/[.!?][”’"']?$/.test(word) ? 1.7 : /[,;:][”’"']?$/.test(word) ? 1.3 : 1) : base; }
+function delayFor(word) {
+  const base = 60000 / state.speed;
+  const punctuationMultiplier = state.punctuation ? (/[.!?][”’"']?$/.test(word) ? 1.7 : /[,;:][”’"']?$/.test(word) ? 1.3 : 1) : 1;
+  const lengthMultiplier = state.longWordPause && [...word].length >= 12 ? 1.35 : 1;
+  return base * Math.max(punctuationMultiplier, lengthMultiplier);
+}
 function scheduleNext() {
   if (!state.playing) return;
   const book = activeBook(); const words = activeWords();
@@ -273,10 +313,17 @@ document.addEventListener('fullscreenchange', updateFocusButton);
 $('#reader-menu').addEventListener('click', () => { elements.menu.hidden = !elements.menu.hidden; });
 $('#restart-option').addEventListener('click', () => { stop(); setPosition(0); elements.menu.hidden = true; });
 $('#delete-option').addEventListener('click', () => { const book = activeBook(); if (!book || !window.confirm(`Remove “${book.title}” from your bookshelf?`)) return; stop(); state.books = state.books.filter(item => item.id !== book.id); state.activeId = state.books[0]?.id || null; save(); renderShelf(); renderReader(); elements.menu.hidden = true; });
-$('#context-toggle').addEventListener('click', () => { const panel = $('#context-panel'); panel.hidden = !panel.hidden; $('#context-toggle').textContent = panel.hidden ? 'View nearby text ↗' : 'Hide nearby text ↑'; if (!panel.hidden) renderContext(); });
+$('#context-toggle').addEventListener('click', () => {
+  const panel = $('#context-panel');
+  panel.hidden = !panel.hidden;
+  $('#context-toggle').textContent = panel.hidden ? 'View nearby text ↗' : 'Hide nearby text ↑';
+  $('#context-toggle').setAttribute('aria-expanded', String(!panel.hidden));
+  if (!panel.hidden) { stop(); renderContext(); }
+});
 document.querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => { state.theme = button.dataset.theme; applyPreferences(); }));
 document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => { state.size = button.dataset.size; applyPreferences(); }));
 $('#punctuation-toggle').addEventListener('change', event => { state.punctuation = event.target.checked; saveSettings(); if (state.playing) { clearTimeout(state.timer); scheduleNext(); } });
+$('#long-word-toggle').addEventListener('change', event => { state.longWordPause = event.target.checked; saveSettings(); if (state.playing) { clearTimeout(state.timer); scheduleNext(); } });
 document.addEventListener('click', event => { if (!event.target.closest('#reader-menu, #reader-options')) elements.menu.hidden = true; });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && $('#reader').classList.contains('focus-overlay')) { $('#reader').classList.remove('focus-overlay'); document.body.classList.remove('focus-open'); updateFocusButton(); return; }
@@ -292,5 +339,7 @@ document.addEventListener('keydown', event => {
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state.playing) stop(); });
 window.addEventListener('pagehide', stop);
+window.addEventListener('resize', fitRenderedWord);
+document.fonts?.ready?.then(fitRenderedWord);
 
 applyPreferences(); changeSpeed(state.speed); renderShelf(); renderReader();

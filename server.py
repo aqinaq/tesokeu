@@ -281,7 +281,7 @@ def extract_article(url: str) -> dict:
 class Handler(SimpleHTTPRequestHandler):
     ALLOWED_FILES = {
         'index.html', 'reader.html', 'library.html', 'insights.html', 'guide.html',
-        'styles.css', 'pages.css', 'data.js', 'app.js', 'pages.js', 'import.js', 'sync.js',
+        'styles.css', 'pages.css', 'design.css', 'data.js', 'app.js', 'pages.js', 'import.js', 'sync.js',
     }
 
     def allowed_static(self):

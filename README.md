@@ -1,6 +1,6 @@
 # Tesokeu
 
-Tesokeu (тез оқу, “read fast”) is a focused reading website. It shows one word at a time while you choose the pace.
+Tesokeu is a focused reading website. It uses RSVP to show one word at a time while the reader chooses a comfortable pace; it does not claim to increase reading speed.
 
 ## Pages
 
@@ -8,6 +8,10 @@ Tesokeu (тез оқу, “read fast”) is a focused reading website. It shows 
 - **Bookshelf:** sample reads, pasted text, PDF/EPUB/TXT upload, public article links, search, filters, sorting, saved positions, and JSON backup/restore.
 - **Insights:** words read, focus time, sessions, completed reads, a seven-day activity chart, and an optional weekly reading goal.
 - **Guide:** product explanation, keyboard shortcuts, and answers to common questions.
+
+## Mountain integration
+
+This reader is a good candidate for an optional Mountain focus mode, rather than a replacement for Mountain's normal document view. The smallest integration surface is a link or action that passes plain text, title, author, and an optional saved word position into the reader. Keep the conventional document view one action away, preserve the same content permissions, and return progress only after the reader opts in. Before shipping, test keyboard access, 200% browser zoom, larger default text, reduced motion, and long unbroken tokens inside Mountain's actual content frame.
 
 Books, extracted article text, bookmarks, progress, preferences, activity, and the weekly goal are saved in this browser's local storage. Optional device sync copies this data to a protected online collection so paired browsers can exchange changes. Existing data from the earlier Stillword prototype is retained. Use **Download backup** on the Bookshelf page to save a JSON copy; restoring one replaces the current browser data after confirmation. The import server extracts text and returns it to the browser; it does not retain uploaded files or fetched articles outside an opted-in synced collection.
 
